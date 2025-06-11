@@ -1,7 +1,9 @@
+# app/schemas/booking.py
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date, time, datetime
 from uuid import UUID
+from decimal import Decimal
 from app.models.booking import BookingStatus
 
 class BookingBase(BaseModel):
@@ -33,3 +35,4 @@ class BookingWithDetails(Booking):
     car_wash_nome: str
     service_nome: str
     service_preco: Decimal
+    user_nome: Optional[str] = None
