@@ -1,6 +1,6 @@
 # app/database.py
 import logging
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
@@ -110,7 +110,8 @@ def test_connection():
     """Testa a conexão com o banco de dados"""
     try:
         db = SessionLocal()
-        db.execute("SELECT 1")
+        # CORREÇÃO: Usar text() para SQL puro
+        db.execute(text("SELECT 1"))
         db.close()
         logger.info("Conexão com banco de dados OK!")
         return True
@@ -125,14 +126,14 @@ def get_database_info():
         db = SessionLocal()
 
         # Informações básicas
-        result = db.execute("SELECT version()").fetchone()
+        result = db.execute(text("SELECT version()")).fetchone()
         db_version = result[0] if result else "Desconhecida"
 
         # Verifica extensões (PostgreSQL)
         extensions = []
         try:
             ext_result = db.execute(
-                "SELECT extname FROM pg_extension ORDER BY extname"
+                text("SELECT extname FROM pg_extension ORDER BY extname")
             ).fetchall()
             extensions = [row[0] for row in ext_result]
         except:
@@ -178,7 +179,7 @@ def execute_raw_query(query: str, params: dict = None):
     """Executa query SQL raw de forma segura"""
     try:
         with DatabaseTransaction() as db:
-            result = db.execute(query, params or {})
+            result = db.execute(text(query), params or {})
             return result.fetchall()
     except Exception as e:
         logger.error(f"Erro na execução de query: {e}")

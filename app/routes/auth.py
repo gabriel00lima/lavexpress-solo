@@ -14,9 +14,11 @@ from app.services.core.security import (
     generate_password_reset_token,
     verify_password_reset_token,
     get_password_hash,
-    validate_password_strength
+    validate_password_strength,
+    verify_password
 )
 from app.services.core.config import settings
+from app.services.core.dependencies import get_current_user
 
 router = APIRouter()
 security = HTTPBearer()
@@ -179,7 +181,8 @@ async def reset_password(token: str, new_password: str, db: Session = Depends(ge
 async def change_password(
         current_password: str,
         new_password: str,
-        current_user: UserSchema = Depends(get_current_user)
+        current_user: UserSchema = Depends(get_current_user),
+        db: Session = Depends(get_db)
 ):
     """Altera senha do usuário logado"""
 
@@ -211,6 +214,3 @@ async def logout():
     # TODO: Implementar blacklist de tokens se necessário
     return {"message": "Logout realizado com sucesso"}
 
-
-# Importar a função get_current_user das dependências
-from app.services.core.dependencies import get_current_user

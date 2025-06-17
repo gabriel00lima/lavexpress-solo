@@ -1,12 +1,12 @@
 # FastAPI e dependências core
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
+fastapi==0.108.0
+uvicorn[standard]==0.25.0
 gunicorn==21.2.0
 
 # Banco de dados
-sqlalchemy==2.0.23
+sqlalchemy==2.0.25
 psycopg2-binary==2.9.9
-alembic==1.12.1
+alembic==1.13.1
 
 # Autenticação e segurança
 python-jose[cryptography]==3.3.0
@@ -14,12 +14,12 @@ passlib[bcrypt]==1.7.4
 python-multipart==0.0.6
 
 # Validação e configuração
-pydantic[email]==2.5.0
+pydantic[email]==2.5.2
 python-decouple==3.8
 
 # Utilitários
 python-dateutil==2.8.2
-pytz==2023.3
+pytz==2023.4
 
 # Email
 aiosmtplib==3.0.1
@@ -28,7 +28,7 @@ aiosmtplib==3.0.1
 structlog==23.2.0
 
 # Desenvolvimento e testes
-pytest==7.4.3
+pytest==7.4.4
 pytest-asyncio==0.21.1
 httpx==0.25.2
 factory-boy==3.3.0
@@ -38,10 +38,10 @@ mkdocs==1.5.3
 mkdocs-material==9.4.8
 
 # Linting e formatação
-black==23.11.0
-isort==5.12.0
-flake8==6.1.0
-mypy==1.7.1
+black==23.12.1
+isort==5.13.2
+flake8==7.0.0
+mypy==1.8.0
 
 # Monitoramento (opcional)
 prometheus-client==0.19.0
