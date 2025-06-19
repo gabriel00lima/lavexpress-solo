@@ -120,6 +120,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:19006",  # ← ADICIONAR ESTA LINHA
         "http://127.0.0.1:19006",
+        "http://192.168.0.94:19006",  # Adicione se ainda não tiver
+        "exp://192.168.0.94:19006",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:8080",
