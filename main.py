@@ -6,8 +6,10 @@ FastAPI application with complete router management and error handling
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles  # ✅ ADICIONAR PARA UPLOADS
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
+from pathlib import Path  # ✅ ADICIONAR PARA UPLOADS
 import logging
 import traceback
 import sys
@@ -41,25 +43,43 @@ async def lifespan(app: FastAPI):
     logger.info(f"📍 Diretório atual: {os.getcwd()}")
     logger.info(f"🐍 Python Path: {sys.path[:3]}...")  # Primeiros 3 caminhos
 
+    # ✅ CRIAR DIRETÓRIO DE UPLOADS
+    upload_dir = Path("uploads")
+    upload_dir.mkdir(exist_ok=True)
+    (upload_dir / "car_wash_profiles").mkdir(exist_ok=True)
+    (upload_dir / "service_images").mkdir(exist_ok=True)
+    (upload_dir / "temp").mkdir(exist_ok=True)
+    logger.info(f"📁 Diretório de uploads criado: {upload_dir.absolute()}")
+
     # Verificar estrutura de arquivos
     logger.info("📂 Verificando estrutura de arquivos...")
     app_dir = os.path.join(current_dir, 'app')
+
+    # ✅ VERIFICAR TANTO ROUTES QUANTO ROUTERS
     routes_dir = os.path.join(app_dir, 'routes')
+    routers_dir = os.path.join(app_dir, 'routers')
 
     if os.path.exists(app_dir):
         logger.info(f"✅ Pasta 'app' encontrada: {app_dir}")
 
-        if os.path.exists(routes_dir):
+        # Verificar qual pasta existe (routes ou routers)
+        active_router_dir = None
+        if os.path.exists(routers_dir):
+            active_router_dir = routers_dir
+            logger.info(f"✅ Pasta 'routers' encontrada: {routers_dir}")
+        elif os.path.exists(routes_dir):
+            active_router_dir = routes_dir
             logger.info(f"✅ Pasta 'routes' encontrada: {routes_dir}")
 
+        if active_router_dir:
             # Listar arquivos de rotas
             try:
-                route_files = [f for f in os.listdir(routes_dir) if f.endswith('.py')]
+                route_files = [f for f in os.listdir(active_router_dir) if f.endswith('.py')]
                 logger.info(f"📄 Arquivos de rotas encontrados: {route_files}")
             except Exception as e:
                 logger.warning(f"⚠️ Erro ao listar arquivos de rotas: {e}")
         else:
-            logger.error(f"❌ Pasta 'routes' não encontrada em: {routes_dir}")
+            logger.error(f"❌ Nem 'routes' nem 'routers' encontrados em: {app_dir}")
     else:
         logger.error(f"❌ Pasta 'app' não encontrada em: {app_dir}")
 
@@ -112,6 +132,12 @@ app = FastAPI(
     openapi_url="/openapi.json"
 )
 
+# ✅ CONFIGURAR ARQUIVOS ESTÁTICOS PARA UPLOADS
+upload_dir = Path("uploads")
+upload_dir.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+logger.info("📁 StaticFiles configurado para /uploads")
+
 # ========================
 # MIDDLEWARE
 # ========================
@@ -161,7 +187,7 @@ def load_routers():
     routers_loaded = []
     routers_failed = []
 
-    # Lista de routers para carregar
+    # ✅ LISTA ATUALIZADA COM NOVOS ROUTERS
     router_configs = [
         {"module": "auth", "prefix": "/auth", "tags": ["auth"]},
         {"module": "user", "prefix": "/user", "tags": ["user"]},
@@ -169,12 +195,27 @@ def load_routers():
         {"module": "service", "prefix": "/service", "tags": ["service"]},
         {"module": "booking", "prefix": "/booking", "tags": ["booking"]},
         {"module": "review", "prefix": "/review", "tags": ["review"]},
+        {"module": "schedule", "prefix": "/car-wash", "tags": ["schedule"]},  # ✅ NOVO
+        {"module": "upload", "prefix": "/upload", "tags": ["upload"]},  # ✅ NOVO
     ]
+
+    # ✅ DETECTAR SE USA ROUTES OU ROUTERS
+    routes_path = "app.routes"
+    routers_path = "app.routers"
+
+    # Verificar qual estrutura existe
+    base_path = routes_path
+    if os.path.exists("app/routers"):
+        base_path = routers_path
+        logger.info("📁 Usando estrutura 'app/routers'")
+    elif os.path.exists("app/routes"):
+        base_path = routes_path
+        logger.info("📁 Usando estrutura 'app/routes'")
 
     for config in router_configs:
         try:
             # Importação dinâmica
-            module_name = f"app.routes.{config['module']}"
+            module_name = f"{base_path}.{config['module']}"
             logger.info(f"🔄 Carregando router: {module_name}")
 
             # Importar o módulo
@@ -196,6 +237,10 @@ def load_routers():
         except ImportError as e:
             routers_failed.append(f"{config['module']} (ImportError: {str(e)})")
             logger.error(f"❌ Erro ao importar router '{config['module']}': {e}")
+
+            # ✅ DETALHES ADICIONAIS PARA NOVOS ROUTERS
+            if config['module'] in ['schedule', 'upload']:
+                logger.error(f"💡 Verifique se app/{base_path.split('.')[1]}/{config['module']}.py existe")
 
         except Exception as e:
             routers_failed.append(f"{config['module']} (Erro: {str(e)})")
@@ -231,7 +276,14 @@ async def root():
         "health": "/health",
         "info": "/info",
         "routers_loaded": len(loaded_routers),
-        "routers_failed": len(failed_routers)
+        "routers_failed": len(failed_routers),
+        "features": [
+            "Agendamento de serviços",
+            "Gestão de lava-jatos",
+            "Sistema de avaliações",
+            "Configuração de horários",  # ✅ NOVO
+            "Upload de imagens"  # ✅ NOVO
+        ]
     }
 
 
@@ -247,6 +299,10 @@ async def health_check():
             "failed": failed_routers,
             "total_loaded": len(loaded_routers),
             "total_failed": len(failed_routers)
+        },
+        "uploads": {
+            "directory": str(Path("uploads").absolute()),
+            "static_mount": "/uploads"
         }
     }
 
@@ -277,7 +333,9 @@ async def get_info():
             "car_washes": "/car-wash/*" if "car_wash" in loaded_routers else "❌ Não carregado",
             "services": "/service/*" if "service" in loaded_routers else "❌ Não carregado",
             "bookings": "/booking/*" if "booking" in loaded_routers else "❌ Não carregado",
-            "reviews": "/review/*" if "review" in loaded_routers else "❌ Não carregado"
+            "reviews": "/review/*" if "review" in loaded_routers else "❌ Não carregado",
+            "schedule": "/car-wash/*/schedule" if "schedule" in loaded_routers else "❌ Não carregado",  # ✅ NOVO
+            "uploads": "/upload/*" if "upload" in loaded_routers else "❌ Não carregado"  # ✅ NOVO
         },
         "documentation": {
             "swagger": "/docs",
@@ -287,23 +345,49 @@ async def get_info():
         "routers_status": {
             "loaded": loaded_routers,
             "failed": failed_routers
-        }
+        },
+        "features": [
+            "Sistema de agendamentos",
+            "Gestão de lava-jatos",
+            "Avaliações e reviews",
+            "Configuração de horários personalizados",  # ✅ NOVO
+            "Upload de imagens (perfil e serviços)",  # ✅ NOVO
+            "Geração automática de slots disponíveis",  # ✅ NOVO
+            "API RESTful completa"
+        ]
     }
 
 
 @app.get("/debug", summary="Debug Info", description="Informações de debug (apenas desenvolvimento)")
 async def debug_info():
     """Informações de debug para desenvolvimento"""
-    return {
+    debug_data = {
         "python_path": sys.path[:5],  # Primeiros 5 caminhos
         "current_directory": os.getcwd(),
         "app_directory_exists": os.path.exists("app"),
         "routes_directory_exists": os.path.exists("app/routes"),
+        "routers_directory_exists": os.path.exists("app/routers"),  # ✅ VERIFICAR AMBOS
+        "uploads_directory_exists": os.path.exists("uploads"),  # ✅ NOVO
         "files_in_app": os.listdir("app") if os.path.exists("app") else "❌ app/ não existe",
-        "files_in_routes": os.listdir("app/routes") if os.path.exists("app/routes") else "❌ app/routes/ não existe",
         "loaded_routers": loaded_routers,
         "failed_routers": failed_routers
     }
+
+    # ✅ VERIFICAR ESTRUTURA DE ROUTERS/ROUTES
+    if os.path.exists("app/routes"):
+        debug_data["files_in_routes"] = os.listdir("app/routes")
+    if os.path.exists("app/routers"):
+        debug_data["files_in_routers"] = os.listdir("app/routers")
+
+    # ✅ VERIFICAR UPLOADS
+    if os.path.exists("uploads"):
+        debug_data["uploads_structure"] = {
+            "car_wash_profiles": os.path.exists("uploads/car_wash_profiles"),
+            "service_images": os.path.exists("uploads/service_images"),
+            "temp": os.path.exists("uploads/temp")
+        }
+
+    return debug_data
 
 
 @app.get("/routes-debug", summary="Routes Debug", description="Lista todas as rotas registradas")
@@ -322,7 +406,12 @@ async def routes_debug():
         "total_routes": len(routes),
         "routes": sorted(routes, key=lambda x: x['path']),
         "routers_loaded": loaded_routers,
-        "routers_failed": failed_routers
+        "routers_failed": failed_routers,
+        "new_features": {
+            "schedule_routes": [r for r in routes if 'schedule' in r['path']],
+            "upload_routes": [r for r in routes if 'upload' in r['path']],
+            "static_files": "/uploads/* (StaticFiles)"
+        }
     }
 
 
@@ -337,7 +426,12 @@ async def not_found_handler(request, exc):
         content={
             "error": "Endpoint não encontrado",
             "message": f"O endpoint {request.url.path} não existe",
-            "available_endpoints": ["/", "/health", "/info", "/debug", "/docs"]
+            "available_endpoints": ["/", "/health", "/info", "/debug", "/docs"],
+            "api_features": [
+                "Configuração de horários: PUT /car-wash/{id}/schedule",
+                "Upload de imagens: POST /upload/car-wash/{id}/profile-image",
+                "Horários disponíveis: GET /car-wash/{id}/available-times"
+            ]
         }
     )
 
